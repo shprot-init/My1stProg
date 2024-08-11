@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 import sqlite3 as sq
 from tkinter import ttk
+from datetime import datetime
 
 
 def create_table_database():
@@ -11,7 +12,8 @@ def create_table_database():
             CREATE TABLE IF NOT EXISTS Costs (
                 cost INTEGER DEFAULT 0,
                 category TEXT NOT NULL,
-                month TEXT NOT NULL
+                month TEXT NOT NULL,
+                last_update TEXT NOT NULL
             )''')
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS Incomes (
@@ -77,12 +79,13 @@ def add_cost():
     select_category_menu.set(selected_category)
     selected_month = select_month_menu.get()
     select_month_menu.set(selected_month)
+    current_date = datetime.now().strftime('%d-%m-%y')
     if cost != '' and selected_category != 'Select category' and selected_month != 'Select month':
         with sq.connect('DataBase.db') as con:
             cursor = con.cursor()
             cursor.execute('''
-                INSERT INTO Costs (cost, category, month) VALUES (?, ?, ?)
-            ''', (cost, selected_category, selected_month))
+                INSERT INTO Costs (cost, category, month, last_update) VALUES (?, ?, ?, ?)
+            ''', (cost, selected_category, selected_month, current_date))
             con.commit()
             EnterText.delete(0, 'end')
     else:
@@ -539,7 +542,12 @@ def category_sum(event=None):
                         ''', (month,))
         result5 = cur.fetchone()[0] or 0
 
-    return result, result1, result2, result3, result4, result5
+        cur.execute('''
+                        SELECT MAX(last_update) FROM Costs WHERE month = ?
+                        ''', (month,))
+        current_date = cur.fetchone()[0]
+
+    return result, result1, result2, result3, result4, result5, current_date
 
 
 def update_tooltip():
@@ -549,7 +557,8 @@ def update_tooltip():
                     f'Bar:          {result[2]:.2f}€\n'
                     f'Leo:          {result[3]:.2f}€\n'
                     f'FuelSeat:     {result[4]:.2f}€\n'
-                    f'FuelPeugeot:  {result[5]:.2f}€')
+                    f'FuelPeugeot:  {result[5]:.2f}€\n\n'
+                    f'LastUpdate:   {result[6]}')
     ToolTip(label_costs, tooltip_text)
 
 
